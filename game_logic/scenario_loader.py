@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List
 
 from .models import DayPrice, Scenario #models.py 내용
+from datetime import date
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
