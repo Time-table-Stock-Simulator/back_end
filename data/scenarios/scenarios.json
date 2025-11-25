@@ -1,0 +1,38 @@
+[
+  {
+    "id": "tesla_2024_03_14d",
+    "symbol": "TSLA",
+    "csv_file": "tesla_2024_03.csv",
+    "start_date": "2024-03-04",
+    "num_days": 14,
+    "title": "2024년 3월 테슬라 14거래일",
+    "description": "2024년 3월 초 테슬라 주가 14거래일을 가지고 예측해보는 시나리오입니다."
+  },
+  {
+    "id": "archer_2024_03_14d",
+    "symbol": "ACHR",
+    "csv_file": "archer_2024_03.csv",
+    "start_date": "2024-03-04",
+    "num_days": 14,
+    "title": "2024년 3월 아처 에비에이션 14거래일",
+    "description": "2024년 3월 초 Archer Aviation 주가 14거래일 시나리오입니다."
+  },
+  {
+    "id": "google_2024_03_14d",
+    "symbol": "GOOGL",
+    "csv_file": "google_2024_03.csv",
+    "start_date": "2024-03-04",
+    "num_days": 14,
+    "title": "2024년 3월 구글(Alphabet) 14거래일",
+    "description": "2024년 3월 초 구글 주가 14거래일 시나리오입니다."
+  },
+  {
+    "id": "samsung_2024_03_14d",
+    "symbol": "005930.KS",
+    "csv_file": "samsung_2024_03.csv",
+    "start_date": "2024-03-04",
+    "num_days": 14,
+    "title": "2024년 3월 삼성전자 14거래일",
+    "description": "2024년 3월 초 삼성전자 주가 14래일 시나리오입니다."
+  }
+]
