@@ -12,6 +12,7 @@ class Holding:
 @dataclass
 class Portfolio:
     def __init__(self, initial_cash:float = 10_000):
+        self.initial_cash: float = initial_cash 
         self.cash:float = initial_cash
         self.holding: dict[str,Holding] = {}
     # 매수

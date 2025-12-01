@@ -189,3 +189,30 @@ def next_day():
         "finished_symbols": finished,  # 더 이상 데이터가 없는 종목 리스트
         "state": state,
     }
+@app.get("/summary")
+def get_summary():
+    """
+    현재 상태 기준으로:
+    - 초기 자본
+    - 현재 평가 금액
+    - 손익 금액 / 손익률
+    을 반환
+    """
+    state = build_state()
+
+    port = engine.portfolio
+    initial = getattr(port, "initial_cash", 10_000)  # 혹시 없으면 1만 달러
+    final_total = state["portfolio"]["total_value"]
+
+    profit = round(final_total - initial, 2)
+    profit_rate = round(profit / initial * 100, 2)
+
+    return {
+        "initial_cash": initial,
+        "final_total": final_total,
+        "profit": profit,
+        "profit_rate": profit_rate,
+    }    
+  
+
+
