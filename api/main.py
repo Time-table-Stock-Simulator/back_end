@@ -12,11 +12,30 @@ app = FastAPI(title="Stock Sim API")
 # -----------------------
 #  전역 엔진 초기화
 # -----------------------
-# scenarios.json 에 있는 모든 시나리오를 로딩해서 엔진에 넣는다.
 all_scenarios = load_scenarios()
 scenario_ids = [s.id for s in all_scenarios]
 
 engine = StockEngine(scenario_ids)
+
+
+def reset_engine():
+    """엔진을 처음 상태로 되돌린다."""
+    global engine
+    engine = StockEngine(scenario_ids)
+
+
+# -----------------------
+#  API 엔드포인트
+# -----------------------
+
+@app.post("/reset")
+def reset():
+    """전체 시뮬레이션 상태를 초기화"""
+    reset_engine()
+    return {
+        "message": "reset ok",
+        "state": build_state(),  # 리셋된 상태도 같이 보내줌
+    }
 
 
 # -----------------------
@@ -95,6 +114,9 @@ def get_state():
     return build_state()
 
 
+from fastapi import FastAPI, HTTPException
+# ...
+
 @app.post("/order")
 def submit_order(req: OrderRequest):
     """주문 제출 후 바로 체결하고, 최신 상태 반환"""
@@ -113,11 +135,16 @@ def submit_order(req: OrderRequest):
     if qty <= 0:
         raise HTTPException(status_code=400, detail="quantity는 1 이상이어야 합니다.")
 
-    # 1) 주문 생성
-    order = engine.submit_order(symbol=symbol, side=side, quantity=qty)
+    try:
+        # 1) 주문 생성
+        order = engine.submit_order(symbol=symbol, side=side, quantity=qty)
 
-    # 2) 바로 오늘 종가로 체결
-    engine.process_orders()
+        # 2) 바로 오늘 종가로 체결
+        engine.process_orders()
+
+    except ValueError as e:
+        # 🔴 포트폴리오에서 잔고 부족 등으로 나온 에러를 400으로 변환
+        raise HTTPException(status_code=400, detail=str(e))
 
     # 3) 체결 후 최신 상태
     state = build_state()
@@ -131,8 +158,9 @@ def submit_order(req: OrderRequest):
             "quantity": order.quantity,
             "submit_day": order.submit_day,
         },
-        "state": state,   # 🔹 추가: 프론트에서 바로 UI 갱신에 쓸 상태
+        "state": state,
     }
+
 
 
 
