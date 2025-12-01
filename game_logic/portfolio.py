@@ -53,6 +53,17 @@ class Portfolio:
             if symbol in current_prices:
                 total += h.quantity * current_prices[symbol]
         return total
+    ##소수 둘쨋자리까지만 출력
+    def __str__(self) -> str:
+        lines = [f"잔고: {self.cash:,.2f}원"]
+        if not self.holding:
+            lines.append("보유 종목 없음")
+        else:
+            for h in self.holding.values():
+                lines.append(
+                    f"{h.symbol}: 수량 {h.quantity}, 평단 {h.avg_price:,.2f}"
+                )
+        return "\n".join(lines)
 
 if __name__ == "__main__":
     p = Portfolio()
