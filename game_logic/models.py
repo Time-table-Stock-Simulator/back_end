@@ -1,6 +1,6 @@
 # Portfolio, Order 같은 도메인 객체
 from dataclasses import dataclass
-from typing import List
+from typing import Optional
 @dataclass
 class DayPrice:
     """
@@ -28,3 +28,14 @@ class Scenario:
     num_days: int
     title: str
     description: str
+
+@dataclass
+class Order:
+    order_id: int
+    symbol: str
+    side: str              # "BUY" or "SELL"
+    quantity: int
+    submit_day: int        # 몇 번째 시뮬레이션 날짜에 제출했는지
+    is_filled: bool = False
+    filled_price: Optional[float] = None
+    filled_day: Optional[int] = None
