@@ -99,6 +99,7 @@ if __name__ == "__main__":
         "tesla_2024_03_14d",
         "google_2024_03_14d",
         "samsung_2024_03_14d",
+        "archer_2024_03_14d",
     ])
 
     # 첫날 가격 출력
@@ -110,6 +111,8 @@ if __name__ == "__main__":
     # 여러 종목 매수
     engine.submit_order("TSLA", "BUY", 1)
     engine.submit_order("GOOGL", "BUY", 2)
+    engine.submit_order("SAMSUNG", "BUY", 3)
+    engine.submit_order("ARCHER", "BUY", 4)
 
     print("\n=== 주문 처리 ===")
     engine.process_orders()
