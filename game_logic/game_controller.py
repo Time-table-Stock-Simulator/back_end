@@ -2,16 +2,17 @@ from game_logic.engine import StockEngine
 
 class GameController:
     def __init__(self, scenario_id:str):
-        self.engine = StockEngine(scenario_id)
+        self.engine = StockEngine([scenario_id])
 
     #오늘 상태 조회
     def get_state(self) -> dict:
-        today = self.engine.get_today_price()
+        symbol = list(self.engine.symbol_states.keys())[0]
+        today = self.engine.get_today_price(symbol)
 
         return {
-            "day_index": self.engine.state.day_index,
+            "day_index": self.engine.symbol_states[symbol]["day_index"],
             "date": today.date,
-            "symbol": self.engine.scenario.symbol,
+            "symbol": symbol,
             "price": {
                 "open": round(today.open, 2),
                 "high": round(today.high, 2),
@@ -32,7 +33,7 @@ class GameController:
 
     #주문 제출
     def submit_order(self, side: str, quantity: int):
-        symbol = self.engine.scenario.symbol
+        symbol = list(self.engine.symbol_states.keys())[0]
         return self.engine.submit_order(symbol=symbol, side=side, quantity=quantity)
 
     # 하루 종료 → 주문 체결

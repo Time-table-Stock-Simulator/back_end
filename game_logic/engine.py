@@ -48,10 +48,6 @@ class StockEngine:
         # =======================
 
     def next_day(self):
-        """
-        모든 종목을 하루씩 증가시킴.
-        일부 종목은 거래일이 부족해 먼저 종료될 수 있음.
-        """
         finished = []
 
         for symbol, state in self.symbol_states.items():
@@ -60,7 +56,8 @@ class StockEngine:
             else:
                 state["day_index"] += 1
 
-        return finished  # 끝난 종목 목록 반환
+        return finished  # 끝난 종목 목록
+
 
         # =======================
         # 주문
