@@ -1,6 +1,6 @@
 #하루씩 진행하는 시뮬레이터
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 
 from game_logic.portfolio import Portfolio
 from .scenario_loader import load_scenarios, load_prices_for_scenario
@@ -14,66 +14,108 @@ class GameState:
     day_index: int=0
 
 class StockEngine:
-    def __init__(self, scenario_id:str):
-        self.scenario = self._find_scenario_by_id(scenario_id)
-        self.prices = load_prices_for_scenario(self.scenario)
-        self.state = GameState(self.scenario, self.prices)
+    def __init__(self, scenario_ids:list[str]):
+        all_scenarios = load_scenarios()
+        self.symbol_states: Dict[str, dict] = {}
+
+        # 여러 종목 로딩
+        for s_id in scenario_ids:
+            sc = next((x for x in all_scenarios if x.id == s_id), None)
+            if sc is None:
+                raise ValueError(f"시나리오 ID '{s_id}'를 찾을 수 없습니다.")
+
+            prices = load_prices_for_scenario(sc)
+
+            self.symbol_states[sc.symbol] = {
+                "scenario": sc,
+                "prices": prices,
+                "day_index": 0,
+            }
+
         self.order_book = OrderBook()
         self.portfolio = Portfolio()
 
-    def _find_scenario_by_id(self, scenario_id: str) -> Scenario:
-        for s in load_scenarios():
-            if s.id == scenario_id:
-                return s
-        raise ValueError(f"시나리오 ID '{scenario_id}'를 찾을 수 없습니다.")
+        # =======================
+        # 가격 관련
+        # =======================
 
-    def get_today_price(self) -> DayPrice:
-        return self.state.prices[self.state.day_index]
+    def get_today_price(self, symbol: str) -> DayPrice:
+        state = self.symbol_states[symbol]
+        return state["prices"][state["day_index"]]
 
-    def next_day(self) -> Optional[DayPrice]:
-        """다음 날짜로 이동하고 가격 반환. 마지막 날이면 None."""
-        if self.state.day_index + 1 >= len(self.state.prices):
-            return None
-        self.state.day_index += 1
-        return self.get_today_price()
+        # =======================
+        # 날짜 이동
+        # =======================
+
+    def next_day(self):
+        """
+        모든 종목을 하루씩 증가시킴.
+        일부 종목은 거래일이 부족해 먼저 종료될 수 있음.
+        """
+        finished = []
+
+        for symbol, state in self.symbol_states.items():
+            if state["day_index"] + 1 >= len(state["prices"]):
+                finished.append(symbol)
+            else:
+                state["day_index"] += 1
+
+        return finished  # 끝난 종목 목록 반환
+
+        # =======================
+        # 주문
+        # =======================
+
     def submit_order(self, symbol: str, side: str, quantity: int):
         """주문 제출"""
         return self.order_book.create_order(
             symbol=symbol,
             side=side,
             quantity=quantity,
-            submit_day = self.state.day_index,
-
+            submit_day=self.symbol_states[symbol]["day_index"],
         )
 
     def process_orders(self):
-        """오늘은 끝나는 금액으로 모든 주문 자동 체결"""
-        today = self.get_today_price()
-        close_price = today.close
-
+        """
+        오늘 모든 주문을 '종가'로 체결
+        """
         open_orders = self.order_book.get_open_orders()
 
         for o in open_orders:
-            # 매수/매도 실행
-            if o.side == "BUY":
-                self.portfolio.buy(o.symbol, o.quantity, close_price)
-            else:
-                self.portfolio.sell(o.symbol, o.quantity, close_price)
+            symbol = o.symbol
+            today_price = self.get_today_price(symbol)
+            close_price = today_price.close
 
-            # 주문 완료 처리
+            # 체결 처리
+            if o.side == "BUY":
+                self.portfolio.buy(symbol, o.quantity, close_price)
+            else:
+                self.portfolio.sell(symbol, o.quantity, close_price)
+
             o.is_filled = True
             o.filled_price = close_price
-            o.filled_day = self.state.day_index
+            o.filled_day = self.symbol_states[symbol]["day_index"]
+
 
 if __name__ == "__main__":
-    print("=== Engine 테스트 ===")
-    engine = StockEngine("tesla_2024_03_14d")
+    engine = StockEngine([
+        "tesla_2024_03_14d",
+        "google_2024_03_14d",
+        "samsung_2024_03_14d",
+    ])
 
-    print("첫 날:", engine.get_today_price())
+    # 첫날 가격 출력
+    print("=== 첫날 가격들 ===")
+    for sym in engine.symbol_states:
+        p = engine.get_today_price(sym)
+        print(sym, p.close)
 
-    for i in range(20):
-        p = engine.next_day()
-        if p is None:
-            print("더 이상 날짜가 없습니다.")
-            break
-        print(f"{engine.state.day_index}일차:", p)
+    # 여러 종목 매수
+    engine.submit_order("TSLA", "BUY", 1)
+    engine.submit_order("GOOGL", "BUY", 2)
+
+    print("\n=== 주문 처리 ===")
+    engine.process_orders()
+
+    print("잔고:", engine.portfolio.cash)
+    print("보유:", engine.portfolio.holding)
