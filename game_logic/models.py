@@ -1,4 +1,4 @@
-# back_end/game_logic/models.py
+# Portfolio, Order 같은 도메인 객체
 from dataclasses import dataclass
 from typing import List
 @dataclass

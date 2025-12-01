@@ -1,95 +1,87 @@
-from __future__ import annotations
-
-import csv
+#시나리오 / CSV 로딩
 import json
+import csv
+from dataclasses import dataclass
 from pathlib import Path
+from datetime import datetime
 from typing import List
 
 from .models import DayPrice, Scenario #models.py 내용
 from datetime import date
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
-PRICES_DIR = DATA_DIR / "prices"
-SCENARIOS_PATH = DATA_DIR / "scenarios" / "scenarios.json"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+SCENARIO_DIR = DATA_DIR / "scenarios"
+PRICE_DIR = DATA_DIR / "prices"
 
+def load_scenarios() -> list[Scenario]:
+    json_path = SCENARIO_DIR / "scenarios.json"
+    with open(json_path, encoding="utf-8") as f:
+        raw = json.load(f)
 
-def load_scenarios() -> List[Scenario]:
-    """
-    scenarios.json 전체를 읽어서 Scenario 객체 리스트로 반환.
-    """
-    with SCENARIOS_PATH.open(encoding="utf-8") as f:
-        raw_list = json.load(f)
-
-    scenarios: List[Scenario] = [Scenario(**item) for item in raw_list]
+    scenarios = []
+    for item in raw:
+        scenarios.append(
+            Scenario(
+                id=item["id"],
+                symbol=item["symbol"],
+                csv_file=item["csv_file"],
+                start_date=item["start_date"],
+                num_days=item["num_days"],
+                title=item["title"],
+                description=item["description"],
+            )
+        )
     return scenarios
 
-def get_scenario(scenario_id: str) -> Scenario:
+def load_prices_for_scenario(scenario: Scenario) -> List[DayPrice]:
     """
-    ID로 특정 시나리오 한 개 찾기.
+    CSV 파일을 읽고 DayPrice 리스트로 변환하며,
+    start_date 이후 num_days만 잘라내어 반환.
     """
-    for s in load_scenarios():
-        if s.id == scenario_id:
-            return s
-    raise ValueError(f"시나리오를 찾을 수 없습니다: {scenario_id}")
-
-
-def load_price_slice(scenario_id: str) -> List[DayPrice]:
-    """
-    주어진 시나리오 ID 기준으로
-    - 해당 csv 파일을 읽고
-    - start_date부터 num_days(거래일) 만큼 잘라서 DayPrice 리스트로 반환.
-    """
-    scenario = get_scenario(scenario_id)
-    csv_path = PRICES_DIR / scenario.csv_file
-
-    if not csv_path.exists():
-        raise FileNotFoundError(f"CSV 파일이 없습니다: {csv_path}")
-
-    days: List[DayPrice] = []
-
-    with csv_path.open(encoding="utf-8") as f:
+    path = PRICE_DIR / scenario.csv_file
+    rows = []
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-
-        started = False
-
-        for row in reader:
-            row_date = row["date"]
-
-            # 아직 시작 날짜 전이면 스킵
-            if not started:
-                if row_date < scenario.start_date:
-                    continue
-                # start_date 이상이 처음 나타난 순간
-                started = True
-
-            # 여기에 오면 start_date 이상
-            if started and len(days) < scenario.num_days:
-                days.append(
-                    DayPrice(
-                        date=row_date,
-                        open=float(row["open"]),
-                        high=float(row["high"]),
-                        low=float(row["low"]),
-                        close=float(row["close"]),
-                        volume=int(float(row["volume"])),
-                    )
+        for r in reader:
+            # CSV 컬럼 이름이 반드시 "date, open, high, low, close, volume" 이어야 함
+            rows.append(
+                DayPrice(
+                    date=r["date"],
+                    open=float(r["open"]),
+                    high=float(r["high"]),
+                    low=float(r["low"]),
+                    close=float(r["close"]),
+                    volume=int(r["volume"]),
                 )
+            )
 
-            # 원하는 일수만큼 모였으면 끝
-            if len(days) >= scenario.num_days:
-                break
+    # 날짜로 필터링
+    start = datetime.fromisoformat(scenario.start_date).date()
+    rows = [p for p in rows if datetime.fromisoformat(p.date).date() >= start]
 
-    return days
-
+    # num_days 만큼 자르기
+    return rows[: scenario.num_days]
 
 if __name__ == "__main__":
     print("=== 시나리오 목록 ===")
-    for s in load_scenarios():
+    scenarios = load_scenarios()
+    for s in scenarios:
         print(f"- {s.id}: {s.title} ({s.symbol})")
 
     print("\n=== tesla_2024_03_14d 가격 슬라이스 ===")
-    prices = load_price_slice("tesla_2024_03_14d")
-    print(f"총 {len(prices)} 거래일")
-    for p in prices:
-        print(p)
+    target_id = "tesla_2024_03_14d"
+
+    # id로 Scenario 하나 찾기
+    tesla_scenario = None
+    for s in scenarios:
+        if s.id == target_id:
+            tesla_scenario = s
+            break
+
+    if tesla_scenario is None:
+        print("해당 id의 시나리오를 찾을 수 없습니다:", target_id)
+    else:
+        prices = load_prices_for_scenario(tesla_scenario)
+        print(f"총 {len(prices)} 거래일")
+        for p in prices:
+            print(p)
