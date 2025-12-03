@@ -6,8 +6,19 @@ from pydantic import BaseModel
 
 from game_logic.engine import StockEngine
 from game_logic.scenario_loader import load_scenarios
+from game_logic.news_loader import load_news
+
+NEWS_SYMBOL_MAP = {
+    "TSLA": "TSLA",
+    "ACHR": "ACHR",
+    "GOOGL": "GOOGL",
+    "GOOG": "GOOGL",
+    "005930.KS": "SAMSUNG",   # ← 삼성전자 코드 → SAMSUNG으로 매핑
+    "SAMSUNG": "SAMSUNG",
+}
 
 app = FastAPI(title="Stock Sim API")
+news_data = load_news()
 
 # -----------------------
 #  전역 엔진 초기화
@@ -114,9 +125,6 @@ def get_state():
     return build_state()
 
 
-from fastapi import FastAPI, HTTPException
-# ...
-
 @app.post("/order")
 def submit_order(req: OrderRequest):
     """주문 제출 후 바로 체결하고, 최신 상태 반환"""
@@ -161,7 +169,35 @@ def submit_order(req: OrderRequest):
         "state": state,
     }
 
+@app.get("/news/{symbol}/{day}")
+def get_news(symbol: str, day: int):
+    """
+    symbol: 'TSLA', 'GOOGL', 'SAMSUNG', 'ACHR'
+    day: 1일차 = 인덱스 0, 2일차 = 인덱스 1 ...
+    """
+    symbol_upper = symbol.upper()
+    news_key = NEWS_SYMBOL_MAP.get(symbol_upper, symbol_upper)
 
+    # 2) 존재 여부 체크
+    if news_key not in news_data:
+        raise HTTPException(status_code=404, detail="해당 심볼 뉴스가 없습니다.")
+
+    if day < 1:
+        raise HTTPException(status_code=400, detail="day는 1 이상이어야 합니다.")
+
+    articles = news_data[news_key]
+    idx = day - 1
+
+    if idx >= len(articles):
+        return {"symbol": news_key, "day": day, "articles": []}
+
+    article = articles[idx]
+
+    return {
+        "symbol": news_key,
+        "day": day,
+        "articles": [article],
+    }
 
 
 @app.post("/end-day")
